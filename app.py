@@ -47,12 +47,18 @@ def scrape():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
-
 # ----------------------------------------------------
 # Default route (for quick browser tests)
 # ----------------------------------------------------
 @app.route("/")
 def home():
     return jsonify({
-        "s
+        "status": "ok",
+        "endpoints": ["/scrape", "/health"],
+        "usage": "POST or GET /scrape?url=https://example.com"
+    })
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
 
