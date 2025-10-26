@@ -1,34 +1,58 @@
-from flask import Flask, request, Response
+import os
 import requests
-from bs4 import BeautifulSoup
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-@app.route("/")
-def fetch():
-    url = request.args.get("url")
+# ----------------------------------------------------
+# Simple health check (for Render / uptime monitors)
+# ----------------------------------------------------
+@app.route("/health")
+def health():
+    return "ok", 200
+
+
+# ----------------------------------------------------
+# Main scraper endpoint (supports GET + POST)
+# ----------------------------------------------------
+@app.route("/scrape", methods=["GET", "POST"])
+def scrape():
+    # Accept URL either from query string or JSON body
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        url = body.get("url")
+    else:
+        url = request.args.get("url")
+
     if not url:
-        return "Missing ?url=", 400
+        return jsonify({"error": "Missing 'url' parameter"}), 400
 
     try:
-        r = requests.get(
-            url,
-            timeout=20,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; GPT-Scraper/1.0)"}
-        )
-        r.raise_for_status()
-    except Exception as e:
-        return f"Error fetching URL: {e}", 500
+        # Fetch the remote page
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "en-US,en;q=0.9",
+        }
 
-    # Strip scripts, styles, images
-    soup = BeautifulSoup(r.text, "html.parser")
-    for tag in soup(["script", "style", "img", "svg", "noscript"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n")
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
 
-    # Limit size (Render free tier limit ≈ 50 MB, but keep it lean)
-    text = text[:800000]
-    return Response(text, mimetype="text/plain")
+        # Return plain text (Zapier handles HTML/text fine)
+        return response.text, 200
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ----------------------------------------------------
+# Default route (for quick browser tests)
+# ----------------------------------------------------
+@app.route("/")
+def home():
+    return jsonify({
+        "s
+
