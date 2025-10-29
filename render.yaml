@@ -2,11 +2,19 @@ services:
   - type: web
     name: soccer-scraper
     env: python
-    region: oregon        # or use 'frankfurt' if you’re in EU
-    buildCommand: pip install -r requirements.txt
-    startCommand: python app.py
     plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
+    autoDeploy: true
+
+  - type: worker
+    name: soccer-keepalive
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python keepalive.py"
+    autoDeploy: true
     envVars:
-      - key: PORT
-        value: 10000
+      - key: TARGET_URL
+        value: "https://soccer-scraper-g8jg.onrender.com"
 
